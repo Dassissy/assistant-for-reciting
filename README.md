@@ -1,2 +1,2 @@
 # assistant-for-reciting-the-English-text
-背书时突发奇想
+背书时的突发奇想
