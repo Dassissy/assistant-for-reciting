@@ -31,6 +31,10 @@ def change_words(s):#更改标点，但我不会拼
         s = re.sub(","," ",s)#逗号换空格
     except:
         pass  
+    try:
+        s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格换成单个空格
+    except:
+        pass
     return s    
 def get_s(text_path,FROM=2,TO=5):
     document = Document(text_path)
@@ -48,8 +52,11 @@ def get_s(text_path,FROM=2,TO=5):
     SET = set(lucky_list)
     lucky_list = list(SET)#利用集合去重
     lucky_list.sort()#排序
+    print(lucky_list)
     luck_len_dict = {}
     no_list = []#某些句子长度只有1
+    answer = new_sens.copy()
+    lucky_word_list = []#记录lucky_word
     for i in lucky_list:
         sen = new_sens[i]
         luck_len = random.randint(FROM,TO)#挖空长度
@@ -60,6 +67,7 @@ def get_s(text_path,FROM=2,TO=5):
             luck_len -= 1#确保挖的空不会超出句子
         if LEN >= 2:
             lucky_word = random.randint(0, LEN-luck_len)#index要少一个
+            lucky_word_list.append(lucky_word)
         else:
             no_list.append(i)
             continue
@@ -78,13 +86,12 @@ def get_s(text_path,FROM=2,TO=5):
     for sen in new_sens:
         s = s + sen + "."
     s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格转为一个空格
-    answer = new_sens.copy()
-    return s,answer,lucky_list,luck_len_dict,lucky_word
+    return s,answer,lucky_list,luck_len_dict,lucky_word_list
 
 def dig_hole(text_path,file_path):#挖空（洞）
     while True:
         try:#从根本上解决出错的问题
-            s,answer,lucky_list,luck_len_dict,lucky_word = get_s(text_path)
+            s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path)
             break
         except:
             continue#多跑几遍绝对没问题(doge)
@@ -94,9 +101,9 @@ def dig_hole(text_path,file_path):#挖空（洞）
     document = Document(path)#再开一遍，清空内容
     document.add_paragraph(s)
     document.save(path)
-    return answer,lucky_list,luck_len_dict,lucky_word
+    return answer,lucky_list,luck_len_dict,lucky_word_list,s
 
-def correct(answer,lucky_list,luck_len_dict,lucky_word,file_path):
+def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     document = Document(file_path)
     s = ''
     for para in document.paragraphs:
@@ -118,7 +125,9 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word,file_path):
         al += luck_len_dict[key] + 1#加一才能保证准确
     error_dict = {}#对了用绿色,错了用红色，精确到单词
     correct_list = []#正确的句子用绿色
+    count = -1#设置count
     for i in lucky_list:
+        count += 1#这样第一个是0
         if s_list[i] == answer[i]:#如果对了就过了
             correct_list.append(i)
             continue
@@ -129,9 +138,12 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word,file_path):
             if len(error_words) == len(correct_words):#长度相等
                 for j in range(len(error_words)):
                     if not error_words[j] == correct_words[j]:#没对的话：
+                        print(error_words[j],correct_words[j])
                         error_dict[i].append(j)#记下应标红的单词，及其所在的句子
             elif len(error_words) != len(correct_words):#不一样的话：
-                for j in range(lucky_word,lucky_word+luck_len_dict[i]+1):
+                print(lucky_word_list[count],luck_len_dict[i])
+                for j in range(lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i]):
+                    a = (lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i])
                     error_dict[i].append(j)
             '''这部分没有用了，哈哈哈
             else:#填多了（为什么会填多了？）
@@ -187,11 +199,10 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word,file_path):
                     r.font.color.rgb = RGBColor(255,0,0)#错误单词用红色
                     er += 1
     document.save(file_path)
-    if (al-er)/al <= 0:
-        print((al-er)/al,er,al)
+    if (al-er)/al == 0:
         return 0
     else:
-        print((al-er)/al,er,al,error_dict)
+        print(str(answer)+"\n"+str(lucky_list)+"\n"+str(error_dict)+"\n"+str(error_words))#error_dict出现问题
         return (al-er)/al #返回正确率
 def out(accuracy):
     if accuracy == 1:
@@ -222,7 +233,7 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
     T_path,F_path = whole_path_list[index]
     while True:
         try:
-            answer,lucky_list,luck_len_dict,lucky_word = dig_hole(text_path=T_path,file_path=F_path)
+            answer,lucky_list,luck_len_dict,lucky_word,s = dig_hole(text_path=T_path,file_path=F_path)
             break
         except:
             print("\r文件没有关",end='')
@@ -230,7 +241,7 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
     while True:
         try:
             accuracy = input("开始做吧,做好了就随便打些东西进来：")#用后面出现的变量是为了不报错且不影响
-            accuracy = correct(answer,lucky_list,luck_len_dict,lucky_word,file_path=F_path)
+            accuracy = correct(answer,lucky_list,luck_len_dict,lucky_word,s,file_path=F_path)
             break
         except PermissionError:
             print("文件没有关")
