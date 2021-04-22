@@ -43,7 +43,6 @@ def get_s(text_path,FROM=2,TO=5):
     for sen in sens:
         if not sen == ' ' or sen == '':
             new_sens.append(sen)
-    answer = new_sens.copy()
     #获取一些幸运句子
     lucky_list = [random.randint(0, len(new_sens)) for _ in range(len(new_sens)//2)]
     SET = set(lucky_list)
@@ -79,6 +78,7 @@ def get_s(text_path,FROM=2,TO=5):
     for sen in new_sens:
         s = s + sen + "."
     s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格转为一个空格
+    answer = new_sens.copy()
     return s,answer,lucky_list,luck_len_dict,lucky_word
 
 def dig_hole(text_path,file_path):#挖空（洞）
@@ -131,7 +131,7 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word,file_path):
                     if not error_words[j] == correct_words[j]:#没对的话：
                         error_dict[i].append(j)#记下应标红的单词，及其所在的句子
             elif len(error_words) != len(correct_words):#不一样的话：
-                for j in range(lucky_word,lucky_word+luck_len_dict[i]+1):#可能因lucky_word的位置发生改变而标错词
+                for j in range(lucky_word,lucky_word+luck_len_dict[i]+1):
                     error_dict[i].append(j)
             '''这部分没有用了，哈哈哈
             else:#填多了（为什么会填多了？）
@@ -187,10 +187,11 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word,file_path):
                     r.font.color.rgb = RGBColor(255,0,0)#错误单词用红色
                     er += 1
     document.save(file_path)
-    if len(correct_list) == 0 or (al-er)/al <= 0:
-        print((al-er)/al)
+    if (al-er)/al <= 0:
+        print((al-er)/al,er,al)
         return 0
     else:
+        print((al-er)/al,er,al,error_dict)
         return (al-er)/al #返回正确率
 def out(accuracy):
     if accuracy == 1:
