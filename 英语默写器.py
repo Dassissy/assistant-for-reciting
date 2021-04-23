@@ -48,16 +48,18 @@ def get_s(text_path,FROM=2,TO=5):
         if not sen == ' ' or sen == '':
             new_sens.append(sen)
     #获取一些幸运句子
-    lucky_list = [random.randint(0, len(new_sens)) for _ in range(len(new_sens)//2)]
+    #len返回的值是从1开始数的，随机数是含末尾的（len(new_sens)-1)
+    lucky_list = [random.randint(0, len(new_sens)-1) for _ in range(len(new_sens)//2)]
     SET = set(lucky_list)
     lucky_list = list(SET)#利用集合去重
     lucky_list.sort()#排序
-    print(lucky_list)
     luck_len_dict = {}
     no_list = []#某些句子长度只有1
     answer = new_sens.copy()
+    print("answer is:{}".format(answer))
     lucky_word_list = []#记录lucky_word
     for i in lucky_list:
+        print(("i and lucky_list are:{},{}").format(i,lucky_list))
         sen = new_sens[i]
         luck_len = random.randint(FROM,TO)#挖空长度
         word_list = sen.split(" ")
@@ -65,8 +67,8 @@ def get_s(text_path,FROM=2,TO=5):
         S_len = len(sen.split(" "))
         while luck_len > 1 and luck_len > S_len:
             luck_len -= 1#确保挖的空不会超出句子
-        if LEN >= 2:
-            lucky_word = random.randint(0, LEN-luck_len)#index要少一个
+        if LEN >= FROM:#若到最后LEN仍然在FROM以上
+            lucky_word = random.randint(0, LEN-luck_len)#index要少一个，但len()会多一个
             lucky_word_list.append(lucky_word)
         else:
             no_list.append(i)
@@ -89,12 +91,16 @@ def get_s(text_path,FROM=2,TO=5):
     return s,answer,lucky_list,luck_len_dict,lucky_word_list
 
 def dig_hole(text_path,file_path):#挖空（洞）
-    while True:
+    '''while True:
         try:#从根本上解决出错的问题
             s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path)
             break
         except:
-            continue#多跑几遍绝对没问题(doge)
+            continue#多跑几遍绝对没问题(doge)'''
+    s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path)
+    lucky_list = set(lucky_list)
+    lucky_list = list(lucky_list)#不知为何这里仍有重复
+    print("lucky_list after duplicate removal is:{}".format(lucky_list))
     path = file_path
     document = Document()
     document.save(path)
@@ -122,12 +128,34 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     er = 0#error
     al = 0#all
     for key in luck_len_dict:
-        al += luck_len_dict[key] + 1#加一才能保证准确
+        al += luck_len_dict[key]#不要+1！！！
     error_dict = {}#对了用绿色,错了用红色，精确到单词
     correct_list = []#正确的句子用绿色
-    count = -1#设置count
-    for i in lucky_list:
-        count += 1#这样第一个是0
+    ilist = []
+    for i in range(len(lucky_list)):
+        if lucky_list[i] not in luck_len_dict:#弹出放弃的句子（过短）
+            ilist.append(i)
+    print(("ilist is:{}\nlucky_list is:{}\nluck_len_dict is:{}").format(ilist,lucky_list,luck_len_dict))
+    count = 0#使用count抵消掉弹出后列表长度的缩减，这里又可以用了
+    for i in ilist:
+        lucky_list.pop(i-count)
+        count += 1
+    for i in range(len(lucky_list)):
+        lucky_list[i] = (lucky_list[i],i)
+    print(("lucky_list with count is:{}").format(lucky_list))
+    """
+    曾使用额外初始化一个count的方法，但是发生了错误，上面又没出错，现象：列表末位离奇+1,（0,1,2,4）,返回如下：
+    3 5
+    0 4
+    1 5
+    [3, 0, 1, 0] {1: 5, 8: 4, 11: 5, 15: 4} 15 4
+    测试用代码：
+    try:
+        print(lucky_word_list[count],luck_len_dict[i])
+    except:
+        print(lucky_word_list,luck_len_dict,i,count)
+    """
+    for i,count in lucky_list:
         if s_list[i] == answer[i]:#如果对了就过了
             correct_list.append(i)
             continue
@@ -137,11 +165,16 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
             correct_words = answer[i].split(" ")
             if len(error_words) == len(correct_words):#长度相等
                 for j in range(len(error_words)):
-                    if not error_words[j] == correct_words[j]:#没对的话：
-                        print(error_words[j],correct_words[j])
+                    if not error_words[j] == correct_words[j]:#没对的话：)
+                        print(("error_words[j] and correct_words[i] are:{},{}").format(error_words[j],correct_words[j]))
                         error_dict[i].append(j)#记下应标红的单词，及其所在的句子
             elif len(error_words) != len(correct_words):#不一样的话：
-                print(lucky_word_list[count],luck_len_dict[i])
+                A = 1
+                try:
+                    print(("lucky_word_list[count],luck_len_dict[i] are:{},{}").foramt(lucky_word_list[count],luck_len_dict[i]))
+                except:
+                    print(("lucky_word_list,luck_len_dict,i,count are:{},{},{},{}").format(lucky_word_list,luck_len_dict,i,count))
+                    pass
                 for j in range(lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i]):
                     a = (lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i])
                     error_dict[i].append(j)
@@ -181,14 +214,29 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     document.save(file_path)
     document = Document(file_path)#再开一遍，清空内容
     p = document.add_paragraph()
-    for i in range(len(s_list)):
+    while s_list[-1] == "":
+        s_list.pop()
+    for i in range(len(lucky_list)):
+        lucky_list[i] = lucky_list[i][0]#又要从元组变回单个的数字
+    for i in range(len(answer)):
+        print(("i and lukcy_list are:{} and {}:").format(i,lucky_list))
         if i not in lucky_list:
-            r = p.add_run(s_list[i]+".")#没有挖空的直接放进去就好了，记得补句点
+            print(("i:{} is not in lucky_list").format(i))
+            try:
+                print(("answer[i] is:{}").format(answer[i]))
+            except:
+                print(("s_list[i] is:{}").format(s_list[i]))
+            r = p.add_run(answer[i]+".")#没有挖空的直接放进去就好了，记得补句点
         elif i in correct_list:
-            r = p.add_run(s_list[i]+".")
+            b = "sign"
+            print(("i,correct_list are:{},{}").format(i,correct_list))
+            r = p.add_run(answer[i]+".")
             r.font.color.rgb = RGBColor(0,255,0)#写对的句子用绿色！
         else:
+            
             for I in range(len(answer[i].split(" "))):
+                print(("i and error_dict are:{} and\n{}").format(i,error_dict))
+                print(("error_dict[i] is:{}").format(error_dict[i]))
                 if I == len(answer[i].split(" "))-1:
                     r = p.add_run(answer[i].split(" ")[I]+".")#补句点
                 else:
@@ -202,7 +250,8 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     if (al-er)/al == 0:
         return 0
     else:
-        print(str(answer)+"\n"+str(lucky_list)+"\n"+str(error_dict)+"\n"+str(error_words))#error_dict出现问题
+        wao = str(answer)+"\n"+str(lucky_list)+"\n"+str(error_dict)+"\n"+str(error_words)
+        print("they are:answer, lucky_list,error_dict,error_words\n{}".format(wao))
         return (al-er)/al #返回正确率
 def out(accuracy):
     if accuracy == 1:
@@ -225,12 +274,13 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
             for path in path_list:
                 print(path)
             index = int(input("请选择文章（序号）：")) - 1#从一开始排序，所以减一
-            if index > len(path_list)-1:
+            if index > len(path_list)-1:#len()返回的值比索引大1（重要的东西写三遍）
                 path_list.error()#只是出个错而已
             break
         except:
             print("重写")
     T_path,F_path = whole_path_list[index]
+    """
     while True:
         try:
             answer,lucky_list,luck_len_dict,lucky_word,s = dig_hole(text_path=T_path,file_path=F_path)
@@ -238,6 +288,8 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
         except:
             print("\r文件没有关",end='')
             time.sleep(0.5)
+            """
+    answer,lucky_list,luck_len_dict,lucky_word,s = dig_hole(text_path=T_path,file_path=F_path)
     while True:
         try:
             accuracy = input("开始做吧,做好了就随便打些东西进来：")#用后面出现的变量是为了不报错且不影响
