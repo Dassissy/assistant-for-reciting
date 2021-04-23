@@ -3,7 +3,7 @@
 Created on Sun Apr 18 20:15:38 2021
 
 英语默写小助手
-问题还有：绿色太多（设空句的其它内容变成绿色）、标点更换后大小写出问题、破折号的处理不能这么简单、文件未关闭要处理一下、
+问题还有：绿色太多（设空句的其它内容变成绿色）、标点更换后大小写出问题、破折号的处理不能这么简单,
          配置文件压根没设置、没了标点没内味
 """
 from docx import Document
@@ -12,25 +12,13 @@ import random,re,time,os
   
 def change_words(s):#更改标点，但我不会拼
     try:
-        s = re.sub("!",".",s)#把叹号换成句号
+        s = re.sub("[!?]",".",s)#把叹号、问号换成句号
     except:
         pass
     try:
-        s = re.sub("?",".",s)#问号也换掉
+        s = re.sub("[-\",“”]"," ",s)#破折号、引号、逗号换空格
     except:
         pass
-    try:
-        s = re.sub("--"," ",s)#破折号换空格
-    except:
-        pass
-    try:
-        s = re.sub("\""," ",s)#引号换空格
-    except:
-        pass
-    try:
-        s = re.sub(","," ",s)#逗号换空格
-    except:
-        pass  
     try:
         s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格换成单个空格
     except:
@@ -56,10 +44,10 @@ def get_s(text_path,FROM=2,TO=5):
     luck_len_dict = {}
     no_list = []#某些句子长度只有1
     answer = new_sens.copy()
-    print("answer is:{}".format(answer))
+    #print("answer is:{}".format(answer))
     lucky_word_list = []#记录lucky_word
     for i in lucky_list:
-        print(("i and lucky_list are:{},{}").format(i,lucky_list))
+        #print(("i and lucky_list are:{},{}").format(i,lucky_list))
         sen = new_sens[i]
         luck_len = random.randint(FROM,TO)#挖空长度
         word_list = sen.split(" ")
@@ -100,7 +88,7 @@ def dig_hole(text_path,file_path):#挖空（洞）
     s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path)
     lucky_list = set(lucky_list)
     lucky_list = list(lucky_list)#不知为何这里仍有重复
-    print("lucky_list after duplicate removal is:{}".format(lucky_list))
+    #print("lucky_list after duplicate removal is:{}".format(lucky_list))
     path = file_path
     document = Document()
     document.save(path)
@@ -135,14 +123,14 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     for i in range(len(lucky_list)):
         if lucky_list[i] not in luck_len_dict:#弹出放弃的句子（过短）
             ilist.append(i)
-    print(("ilist is:{}\nlucky_list is:{}\nluck_len_dict is:{}").format(ilist,lucky_list,luck_len_dict))
+    #print(("ilist is:{}\nlucky_list is:{}\nluck_len_dict is:{}").format(ilist,lucky_list,luck_len_dict))
     count = 0#使用count抵消掉弹出后列表长度的缩减，这里又可以用了
     for i in ilist:
         lucky_list.pop(i-count)
         count += 1
     for i in range(len(lucky_list)):
         lucky_list[i] = (lucky_list[i],i)
-    print(("lucky_list with count is:{}").format(lucky_list))
+    #print(("lucky_list with count is:{}").format(lucky_list))
     """
     曾使用额外初始化一个count的方法，但是发生了错误，上面又没出错，现象：列表末位离奇+1,（0,1,2,4）,返回如下：
     3 5
@@ -169,14 +157,14 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
                         print(("error_words[j] and correct_words[i] are:{},{}").format(error_words[j],correct_words[j]))
                         error_dict[i].append(j)#记下应标红的单词，及其所在的句子
             elif len(error_words) != len(correct_words):#不一样的话：
-                A = 1
+                """A = 1
                 try:
                     print(("lucky_word_list[count],luck_len_dict[i] are:{},{}").foramt(lucky_word_list[count],luck_len_dict[i]))
                 except:
                     print(("lucky_word_list,luck_len_dict,i,count are:{},{},{},{}").format(lucky_word_list,luck_len_dict,i,count))
-                    pass
+                    pass"""
                 for j in range(lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i]):
-                    a = (lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i])
+                    #a = (lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i])
                     error_dict[i].append(j)
             '''这部分没有用了，哈哈哈
             else:#填多了（为什么会填多了？）
@@ -219,24 +207,26 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     for i in range(len(lucky_list)):
         lucky_list[i] = lucky_list[i][0]#又要从元组变回单个的数字
     for i in range(len(answer)):
-        print(("i and lukcy_list are:{} and {}:").format(i,lucky_list))
+        #print(("i and lukcy_list are:{} and {}:").format(i,lucky_list))
         if i not in lucky_list:
+            """
             print(("i:{} is not in lucky_list").format(i))
             try:
                 print(("answer[i] is:{}").format(answer[i]))
             except:
                 print(("s_list[i] is:{}").format(s_list[i]))
+                """
             r = p.add_run(answer[i]+".")#没有挖空的直接放进去就好了，记得补句点
         elif i in correct_list:
-            b = "sign"
-            print(("i,correct_list are:{},{}").format(i,correct_list))
+            #b = "sign"
+            #print(("i,correct_list are:{},{}").format(i,correct_list))
             r = p.add_run(answer[i]+".")
             r.font.color.rgb = RGBColor(0,255,0)#写对的句子用绿色！
         else:
             
             for I in range(len(answer[i].split(" "))):
-                print(("i and error_dict are:{} and\n{}").format(i,error_dict))
-                print(("error_dict[i] is:{}").format(error_dict[i]))
+                #print(("i and error_dict are:{} and\n{}").format(i,error_dict))
+                #print(("error_dict[i] is:{}").format(error_dict[i]))
                 if I == len(answer[i].split(" "))-1:
                     r = p.add_run(answer[i].split(" ")[I]+".")#补句点
                 else:
@@ -247,12 +237,13 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
                     r.font.color.rgb = RGBColor(255,0,0)#错误单词用红色
                     er += 1
     document.save(file_path)
-    if (al-er)/al == 0:
+    accuracy = (al-er)/al
+    if accuracy == 0:
         return 0
     else:
-        wao = str(answer)+"\n"+str(lucky_list)+"\n"+str(error_dict)+"\n"+str(error_words)
-        print("they are:answer, lucky_list,error_dict,error_words\n{}".format(wao))
-        return (al-er)/al #返回正确率
+        #wao = str(answer)+"\n"+str(lucky_list)+"\n"+str(error_dict)+"\n"+str(error_words)
+        #print("they are:answer, lucky_list,error_dict,error_words\n{}".format(wao))
+        return accuracy #返回正确率
 def out(accuracy):
     if accuracy == 1:
         print("全对，真棒！")
@@ -280,16 +271,22 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
         except:
             print("重写")
     T_path,F_path = whole_path_list[index]
-    """
+    try:
+        Document(T_path)
+    except:
+        print("这是一个空文档")
+        return "again now"
     while True:
         try:
             answer,lucky_list,luck_len_dict,lucky_word,s = dig_hole(text_path=T_path,file_path=F_path)
+            #print(("luck_len_dict is:{}").format(luck_len_dict))
+            if not luck_len_dict:#如果没有任何有长的空，那么这传进来的东西就是没有实质内容了
+                print("此文章无有效句子")
+                return "again now"
             break
-        except:
+        except PermissionError:
             print("\r文件没有关",end='')
-            time.sleep(0.5)
-            """
-    answer,lucky_list,luck_len_dict,lucky_word,s = dig_hole(text_path=T_path,file_path=F_path)
+        time.sleep(0.5)
     while True:
         try:
             accuracy = input("开始做吧,做好了就随便打些东西进来：")#用后面出现的变量是为了不报错且不影响
