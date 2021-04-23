@@ -3,8 +3,7 @@
 Created on Sun Apr 18 20:15:38 2021
 
 英语默写小助手
-问题还有：绿色太多（设空句的其它内容变成绿色）、标点更换后大小写出问题、破折号的处理不能这么简单,
-         配置文件压根没设置、没了标点没内味
+问题还有：绿色太多（设空句的其它内容变成绿色）、标点更换后大小写出问题、破折号的处理不能这么简单、没了标点没内味
 """
 from docx import Document
 from docx.shared import RGBColor
@@ -24,7 +23,7 @@ def change_words(s):#更改标点，但我不会拼
     except:
         pass
     return s    
-def get_s(text_path,FROM=2,TO=5):
+def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     document = Document(text_path)
     s = ''
     for para in document.paragraphs:#读取word文档
@@ -37,7 +36,7 @@ def get_s(text_path,FROM=2,TO=5):
             new_sens.append(sen)
     #获取一些幸运句子
     #len返回的值是从1开始数的，随机数是含末尾的（len(new_sens)-1)
-    lucky_list = [random.randint(0, len(new_sens)-1) for _ in range(len(new_sens)//2)]
+    lucky_list = [random.randint(0, len(new_sens)-1) for _ in range(len(new_sens)//num_of_Qs)]
     SET = set(lucky_list)
     lucky_list = list(SET)#利用集合去重
     lucky_list.sort()#排序
@@ -78,14 +77,8 @@ def get_s(text_path,FROM=2,TO=5):
     s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格转为一个空格
     return s,answer,lucky_list,luck_len_dict,lucky_word_list
 
-def dig_hole(text_path,file_path):#挖空（洞）
-    '''while True:
-        try:#从根本上解决出错的问题
-            s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path)
-            break
-        except:
-            continue#多跑几遍绝对没问题(doge)'''
-    s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path)
+def dig_hole(text_path,file_path,FROM,TO,num_of_Qs):#挖空（洞）
+    s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path,FROM,TO,num_of_Qs)
     lucky_list = set(lucky_list)
     lucky_list = list(lucky_list)#不知为何这里仍有重复
     #print("lucky_list after duplicate removal is:{}".format(lucky_list))
@@ -252,7 +245,52 @@ def out(accuracy):
     else:
         print("改完了，{}分，去看看吧".format(accuracy*100))
 
+def make_path(path):
+    path_list = path.split("//")
+    path_list.pop()#最后还有一个元素是空字符串，不要在上面直接pop()，此函数返回被弹出的元素
+    #print(("path_list is:{}").format(path_list))
+    path_now = ''
+    c = 0
+    #print(("new path_now is:{}").format(path_now))
+    while c+1 <= len(path_list):
+        path_now = path_now + path_list[c] + "//"
+        #print(("path_now is:{}").format(path_now))
+        if not os.path.exists(path_now):
+            #print(("not exist path:{}").format(path_now))
+            os.mkdir(path_now)
+        c += 1
+    #print(("path_now is:{}").format(path_now))
+
+def read_config():#读取配置
+    try:
+        config_path = os.getcwd() + "\\" + "config\\config.txt"
+        #print(("config_path is:{}").format(config_path))
+        with open(config_path,"r",encoding="utf-8") as f:#把相对位置转换为绝对位置
+            lines = f.readlines()
+            new_lines = []
+            for line in lines:
+                line = line.split("：")[1]
+                new_lines.append(line)
+            #最后有一个换行符所以全部取到倒数第二个字符
+            FROM = new_lines[0][:-1]
+            TO = new_lines[1][:-1]
+            text_path = new_lines[2][:-1]
+            file_path = new_lines[3][:-1]
+            num_of_Qs = new_lines[4][:-1]
+            #print(("FROM,TO,num_of_Qs are:{},{},{}").format(FROM,TO,num_of_Qs))
+            FROM,TO,num_of_Qs = int(FROM),int(TO),int(num_of_Qs)#这几个是int类型的
+            #print(("file_path is:{}").format(file_path))
+            make_path(text_path)#建立问卷路径，集中错误：没有弄原文
+            make_path(file_path)#建立答卷路径
+    except:
+        print("配置文件出错")
+        return "again now"
+    return FROM,TO,text_path,file_path,num_of_Qs
 def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答卷//"):
+    try:
+        FROM,TO,text_path,file_path,num_of_Qs = read_config()#读取配置
+    except ValueError:
+        return "again now"
     path_list = []
     whole_path_list = []
     for path in os.listdir(text_path):
@@ -261,6 +299,9 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
         path_list.append(path)
         whole_path_list.append((T_path,F_path))
     while True:
+        if not path_list:
+            print("你没有设置原文")
+            return "again now"
         try:
             for path in path_list:
                 print(path)
@@ -278,7 +319,7 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
         return "again now"
     while True:
         try:
-            answer,lucky_list,luck_len_dict,lucky_word,s = dig_hole(text_path=T_path,file_path=F_path)
+            answer,lucky_list,luck_len_dict,lucky_word,s = dig_hole(text_path=T_path,file_path=F_path,FROM=FROM,TO=TO,num_of_Qs=num_of_Qs)
             #print(("luck_len_dict is:{}").format(luck_len_dict))
             if not luck_len_dict:#如果没有任何有长的空，那么这传进来的东西就是没有实质内容了
                 print("此文章无有效句子")
