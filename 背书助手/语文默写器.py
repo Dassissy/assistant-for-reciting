@@ -88,7 +88,7 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     s = ''
     for sen in new_sens[:-1]:#这最后一个不知为何是空字符串
         s = s + sen + "。"
-    print(("luck_len_dict,lucky_word_list are:{},{}").format(luck_len_dict,lucky_word_list))
+    #print(("luck_len_dict,lucky_word_list are:{},{}").format(luck_len_dict,lucky_word_list))
     s = re.sub(r"[ ]*","",s)#空格消失术
     s = modify_s(s)#对s的内容略做修改
     return s,answer,lucky_list,luck_len_dict,lucky_word_list
@@ -112,13 +112,13 @@ def modify_s(s):
     for S in s_list:
         s = s + S + "。"
     s = re.sub("！","",s)
-    print(("s is:{}").format(s))
+    #print(("s is:{}").format(s))
     return s
 
 def dig_hole(text_path,file_path,FROM,TO,num_of_Qs):#挖空（洞）
     s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path,FROM,TO,num_of_Qs)
     lucky_list = set(lucky_list)
-    lucky_list = list(lucky_list)#不知为何这里仍有重复
+    lucky_list = list(lucky_list)#不知为何这里仍有重复，于是再去重一次
     #print("lucky_list after duplicate removal is:{}".format(lucky_list))
     path = file_path
     document = Document()
@@ -259,21 +259,21 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
                         else:
                             r.font.color.rgb = RGBColor(255,0,0)#错字用红色
     document.save(file_path)
-    print(("er,al are:{},{}".format(er,al)))
+    #print(("er,al are:{},{}".format(er,al)))
     accuracy = (al-er)/al
     if accuracy == 0:
-        return 0
+        return 0,0
     else:
         #wao = str(answer)+"\n"+str(lucky_list)+"\n"+str(error_dict)+"\n"+str(error_words)
         #print("they are:answer, lucky_list,error_dict,error_words\n{}".format(wao))
-        return accuracy #返回正确率
-def out(accuracy):
+        return accuracy,al-er #返回正确率及正确空数
+def out(accuracy,correct_num):
     if accuracy == 1:
         print("全对，真棒！")
     elif accuracy == 0:
         print("全错，真有你的")
     else:
-        print("改完了，{}分，去看看吧".format(accuracy*100))
+        print("改完了，正确{}个空，计{}分，去看看吧".format(correct_num,round(accuracy*100, 1)))#没有对精度的要求，故直接使用round()
 
 def make_path(path):
     path_list = path.split("//")
@@ -345,7 +345,7 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
     try:
         Document(T_path)
     except:
-        print("这是一个空文档")
+        print("这是一个空文档或不是docx文档")
         return "again now"
     while True:
         try:
@@ -358,14 +358,18 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
         except PermissionError:
             print("\r文件没有关",end='')
         time.sleep(0.5)
+    al = 0#all
+    for key in luck_len_dict:
+        al += luck_len_dict[key]#不要+1！！！
     while True:
         try:
-            accuracy = input("开始做吧,做好了就随便打些东西进来：")#用后面出现的变量是为了不报错且不影响
-            accuracy = correct(answer,lucky_list,luck_len_dict,lucky_word,s,file_path=F_path)
+            
+            accuracy = input(("本次小测共设空{}处，按任意键开始批改：").format(al))#用后面出现的变量是为了不报错且不影响
+            accuracy,correct_num = correct(answer,lucky_list,luck_len_dict,lucky_word,s,file_path=F_path)
             break
         except PermissionError:
             print("文件没有关")
-    out(accuracy)
+    out(accuracy,correct_num)
     
 yes = ''
 while yes == '':
