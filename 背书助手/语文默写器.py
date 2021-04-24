@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Apr 18 20:15:38 2021
+Created on Fri Apr 23 22:45:21 2021
 
-英语默写小助手
-问题还有：标点更换后大小写出问题、破折号的处理不能这么简单、没了标点没内味
+语文默写小助手
 """
 from docx import Document
 from docx.shared import RGBColor
@@ -11,18 +10,23 @@ import random,re,time,os
   
 def change_words(s):#更改标点，但我不会拼
     try:
-        s = re.sub("[!?]",".",s)#把叹号、问号换成句号
+        s = re.sub("[!?！？.]","。",s)#叹号、问号、省略号换句号
     except:
         pass
     try:
-        s = re.sub("[-\",“”]"," ",s)#破折号、引号、逗号换空格
+        s = re.sub("[——-\"“”]","",s)#破折号、引号弄没掉
     except:
         pass
     try:
-        s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格换成单个空格
+        s = re.sub("[;；]","，",s)#分号换逗号
     except:
         pass
-    return s
+    try:
+        s = re.sub("[ (\u3000)]","",s)#空格消失术
+    except:
+        pass
+    #顿号没有刻意处理，试试行不行
+    return s   
 
 def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     document = Document(text_path)
@@ -30,13 +34,16 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     for para in document.paragraphs:#读取word文档
         s = s + para.text + "\n"
     s = change_words(s)#更改标点
-    sens = s.split(".")#按句分割
+    sens = s.split("。")#按句分割
     new_sens = []
-    for sen in sens:
-        if not sen == ' ' or sen == '':
+    for sen in sens:#此处不能用if not sen == " " or not sen == "": new_sens.append(sen)的结构
+        if sen == ' ' or sen == '':
+            pass
+        else:
             new_sens.append(sen)
     #获取一些幸运句子
     #len返回的值是从1开始数的，随机数是含末尾的（len(new_sens)-1)
+    #print(("new_sens and its len are:{},{}").format(new_sens,len(new_sens)))
     lucky_list = [random.randint(0, len(new_sens)-1) for _ in range(len(new_sens)//num_of_Qs)]
     SET = set(lucky_list)
     lucky_list = list(SET)#利用集合去重
@@ -50,9 +57,12 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
         #print(("i and lucky_list are:{},{}").format(i,lucky_list))
         sen = new_sens[i]
         luck_len = random.randint(FROM,TO)#挖空长度
-        word_list = sen.split(" ")
+        word_list = sen.split("，")#以以逗号隔开的小句为单位考察
+        #print(("word_list is:{}").format(word_list))
         LEN = len(word_list)
+        #print(("LEN is:{}").format(LEN))
         while luck_len > 1 and luck_len > LEN:
+            #print(("i and luck_len are:{},{}").format(i,luck_len))
             luck_len -= 1#确保挖的空不会超出句子
         if LEN >= FROM:#若到最后LEN仍然在FROM以上
             lucky_word = random.randint(0, LEN-luck_len)#index要少一个，但len()会多一个，所以最后没有+1也没有-1
@@ -61,25 +71,49 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
             no_list.append(i)
             continue
         luck_len_dict[i] = luck_len
+        #print(("luck_len is:{}").format(luck_len))
         word_list[lucky_word] = "({})".format(luck_len)#括号中间写长度
         for i2 in range(luck_len):
             if not i2 == 0:#不能再把之前的括号删掉
                 word_list[lucky_word+i2] = ''#删掉之后的
         sen = ''
         for word in word_list:
-            sen = sen + word + " "
+            if not word_list.index(word) == len(word_list)-1:
+                sen = sen + word + "，"
+            else:
+                sen = sen + word
         new_sens[i] = sen#处理后的句子再转回去
-        """这部分可有可无，因为在底下有更简便的方式可以敲除无法挖空的句子
     for no in no_list:
-        print(("no_list is:{}").format(no_list))
-        print(("lucky_list before removal is:{}").format(lucky_list))
         lucky_list.remove(no)
-        print(("lucky_list after removal is:{}").format(lucky_list))"""
     s = ''
-    for sen in new_sens:
-        s = s + sen + "."
-    s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格转为一个空格
+    for sen in new_sens[:-1]:#这最后一个不知为何是空字符串
+        s = s + sen + "。"
+    print(("luck_len_dict,lucky_word_list are:{},{}").format(luck_len_dict,lucky_word_list))
+    s = re.sub(r"[ ]*","",s)#空格消失术
+    s = modify_s(s)#对s的内容略做修改
     return s,answer,lucky_list,luck_len_dict,lucky_word_list
+
+def modify_s(s):
+    s = re.sub("。","！。",s)#___。___，。___。 -> ___！。___，！。___！。
+    s_list = s.split("。")[:-1]# -> ___！___，！___！#最后会有一个空字符串，不要它
+    #print(("s_list before modifying is:{}").format(s_list))
+    for sen in s_list:
+        if re.search(r"[(][1234567890]*?[)]", sen):#若出现"(数字)"的结构
+            if re.search(r"，，！",sen):#若出现"，，！"，那么：#可能只有两个空
+                new_sen = re.sub(r"，！","！",sen)# -> ___！___！___！
+            else:
+                new_sen = sen
+            new_sen = re.sub(r"[(][1234567890]*?[)]","",new_sen)#不论如何，都将"(数字)"结构删除
+            s_list[s_list.index(sen)] = new_sen[:-1]#最后的感叹号就不要了
+        else:
+            continue
+    #print(("s_list after modifying is:{}").format(s_list))
+    s = ''
+    for S in s_list:
+        s = s + S + "。"
+    s = re.sub("！","",s)
+    print(("s is:{}").format(s))
+    return s
 
 def dig_hole(text_path,file_path,FROM,TO,num_of_Qs):#挖空（洞）
     s,answer,lucky_list,luck_len_dict,lucky_word_list = get_s(text_path,FROM,TO,num_of_Qs)
@@ -100,7 +134,7 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     for para in document.paragraphs:
         s = s + para.text
     s = change_words(s)#更改标点
-    s_list = s.split(".")#同样按句分割答案
+    s_list = s.split("。")#同样按句分割答案
     for i in range(len(s_list)):#最后会多一个空格
         list_s = list(s_list[i])
         if len(list_s) >= 1:
@@ -114,7 +148,7 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     al = 0#all
     for key in luck_len_dict:
         al += luck_len_dict[key]#不要+1！！！
-    error_dict = {}#对了用绿色,错了用红色，精确到单词
+    error_dict = {}#错了用红色，精确到字{i1:{j1:[k1,k2],j2:[k3,k4,k5]},i2:{j3:[k6,k7],j4:[k8]}}
     correct_list = []#正确的句子用绿色
     ilist = []
     for i in range(len(lucky_list)):
@@ -128,32 +162,35 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     for i in range(len(lucky_list)):
         lucky_list[i] = (lucky_list[i],i)
     #print(("lucky_list with count is:{}").format(lucky_list))
-    """
-    曾使用额外初始化一个count的方法，但是发生了错误，上面又没出错，现象：列表末位离奇+1,（0,1,2,4）,返回如下：
-    3 5
-    0 4
-    1 5
-    [3, 0, 1, 0] {1: 5, 8: 4, 11: 5, 15: 4} 15 4
-    测试用代码：
-    try:
-        print(lucky_word_list[count],luck_len_dict[i])
-    except:
-        print(lucky_word_list,luck_len_dict,i,count)
-    """
     for i,count in lucky_list:
         if s_list[i] == answer[i]:#如果对了就过了
             correct_list.append(i)
             continue
         else:#没对就费事了
-            error_dict[i] = []#往字典里加空列表
-            error_words = s_list[i].split(" ")
-            correct_words = answer[i].split(" ")
+            error_dict[i] = {}#往字典里加空字典
+            error_words = s_list[i].split("，")
+            correct_words = answer[i].split("，")
             if len(error_words) == len(correct_words):#长度相等
-                for j in range(len(error_words)):
+                for j in range(len(correct_words)):
                     if not error_words[j] == correct_words[j]:#没对的话：)
-                        print(("error_words[j] and correct_words[i] are:{},{}").format(error_words[j],correct_words[j]))
-                        error_dict[i].append(j)#记下应标红的单词，及其所在的句子
-            elif len(error_words) != len(correct_words):#不一样的话：
+                        #print(("error_words[j] and correct_words[i] are:{},{}").format(error_words[j],correct_words[j]))
+                        error_zi = list(error_words[j])
+                        correct_zi = list(correct_words[j])
+                        #print(("error_zi and correct_zi are:{},{}").format(error_zi,correct_zi))
+                        if len(error_zi) == len(correct_zi):#梅开二度按字数来分
+                            count = 0
+                            for k in range(len(correct_zi)):
+                                if not correct_zi[k] == error_zi[k]:
+                                    if count == 0:
+                                        error_dict[i][j] = [k]#创建列表
+                                        count += 1
+                                    else:
+                                        error_dict[i][j].append(k)#往列表内追加元素
+                        else:#字数不同则全部放进去
+                            error_dict[i][j] = []
+                            for k in range(len(correct_zi)):
+                                error_dict[i][j].append(k)
+            else:#不一样的话：
                 """A = 1
                 try:
                     print(("lucky_word_list[count],luck_len_dict[i] are:{},{}").foramt(lucky_word_list[count],luck_len_dict[i]))
@@ -162,39 +199,11 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
                     pass"""
                 for j in range(lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i]):
                     #a = (lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i])
-                    error_dict[i].append(j)
-            '''这部分没有用了，哈哈哈
-            else:#填多了（为什么会填多了？）
-                print(error_words,correct_words)
-                f=0
-                b=0
-                for j in range(len(error_words)):#从前面走一遍
-                    if error_words[j] == correct_words[j]:
-                        continue
-                    else:
-                        f = j
-                        break
-                error_words.reverse()#倒转原答
-                correct_words.reverse()#倒转标答
-                sdrow_rorre = error_words.copy()
-                sdrow_tcerroc = correct_words.copy()
-                error_words.reverse()#倒转回原答
-                correct_words.reverse()#倒转回标答
-                for j in range(len(sdrow_rorre)):#从后面走一遍
-                    if sdrow_rorre[j] == sdrow_tcerroc[j]:
-                        continue
-                    else:
-                        b = j
-                        break
-                b = len(error_words) - b
-                print(f,b)
-                if f != b:
-                    for j in range(f,b+1):
-                        print(error_dict[i])
-                        error_dict[i].append(j)
-                else:
-                    error_dict[i].append(f)
-            '''
+                    error_dict[i][j] = []
+                    print(("range and correct_zi are:{},{}").format((lucky_word_list[count],lucky_word_list[count]+luck_len_dict[i]-1),list(correct_words[j])))
+                    for k in range(len(list(correct_words[j]))):
+                        error_dict[i][j].append(k)
+    #print(("error_dict is:{}").format(error_dict))
     document = Document()
     document.save(file_path)
     document = Document(file_path)#再开一遍，清空内容
@@ -213,27 +222,44 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
             except:
                 print(("s_list[i] is:{}").format(s_list[i]))
                 """
-            r = p.add_run(answer[i]+".")#没有挖空的直接放进去就好了，记得补句点
+            r = p.add_run(answer[i]+"。")#没有挖空的直接放进去就好了，记得补句号
         elif i in correct_list:
             #b = "sign"
             #print(("i,correct_list are:{},{}").format(i,correct_list))
-            r = p.add_run(answer[i]+".")
+            r = p.add_run(answer[i]+"。")#最后会多一个句号，所以这里可以改一改
             r.font.color.rgb = RGBColor(0,255,0)#写对的句子用绿色！
         else:
-            
-            for I in range(len(answer[i].split(" "))):
+            for I in range(len(answer[i].split("，"))):
                 #print(("i and error_dict are:{} and\n{}").format(i,error_dict))
                 #print(("error_dict[i] is:{}").format(error_dict[i]))
-                if I == len(answer[i].split(" "))-1:
-                    r = p.add_run(answer[i].split(" ")[I]+".")#补句点
+                if not I in error_dict[i]:#往字典里加字典为的就是这个
+                    if I == len(answer[i])-1:
+                        r = p.add_run(answer[i].split("，")[I]+"。")
+                    else:
+                        r = p.add_run(answer[i].split("，")[I]+"，")
+                    r.font.color.rgb = RGBColor(0,255,0)#正确的小段用绿色
                 else:
-                    r = p.add_run(answer[i].split(" ")[I]+" ")#补空格
-                if not I in error_dict[i]:#往字典里加列表为的就是这个
-                    r.font.color.rgb = RGBColor(0,255,0)#正确单词用绿色
-                else:
-                    r.font.color.rgb = RGBColor(255,0,0)#错误单词用红色
-                    er += 1
+                    er += 1#算分按小段算,故er先加上1
+                    #print(("answer[i] and I are:{},{}").format(answer[i],I))
+                    ans_zi = list(answer[i].split("，")[I])
+                    for II in range(len(ans_zi)):
+                        if II == len(ans_zi)-1:#最后一个字后是句号或逗号
+                            if I == len(answer[i].split("，"))-1:
+                                #print(("now I:{} == len(answer[i].split('，'))-1").format(I))
+                                #print(("answer[i].split('，') is:{}").format(answer[i].split('，')))
+                                r = p.add_run(ans_zi[II]+"。")
+                            else:
+                                #print(("now I:{} != len(answer[i].split('，'))-1").format(I))
+                                #print(("answer[i].split('，') is:{}").format(answer[i].split('，')))
+                                r = p.add_run(ans_zi[II]+"，")
+                        else:
+                            r = p.add_run(ans_zi[II])#小段中间的字就什么都不需要了
+                        if not II in error_dict[i][I]:
+                            r.font.color.rgb = RGBColor(0,255,0)#正确的字用绿色
+                        else:
+                            r.font.color.rgb = RGBColor(255,0,0)#错字用红色
     document.save(file_path)
+    print(("er,al are:{},{}".format(er,al)))
     accuracy = (al-er)/al
     if accuracy == 0:
         return 0
@@ -267,9 +293,9 @@ def make_path(path):
 
 def read_config():#读取配置
     try:
-        config_path = os.getcwd() + "\\" + "config\\English_config.txt"#把相对位置转换为绝对位置
+        config_path = os.getcwd() + "\\" + "config\\Chinese_config.txt"
         #print(("config_path is:{}").format(config_path))
-        with open(config_path,"r",encoding="utf-8") as f:
+        with open(config_path,"r",encoding="utf-8") as f:#把相对位置转换为绝对位置
             lines = f.readlines()
             new_lines = []
             for line in lines:
