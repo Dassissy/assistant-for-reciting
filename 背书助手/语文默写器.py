@@ -3,6 +3,7 @@
 Created on Fri Apr 23 22:45:21 2021
 
 语文默写小助手
+特殊：标题：定义为由多于或等于三个的等号与下一个句号之间的内容（===xxx。），它们不会被抽作题目(但是有bug)
 """
 from docx import Document
 from docx.shared import RGBColor
@@ -14,11 +15,15 @@ def change_words(s):#更改标点，但我不会拼
     except:
         pass
     try:
-        s = re.sub("[——-\"“”]","",s)#破折号、引号弄没掉
+        s = re.sub("[\"“”]","",s)#引号全部弄没掉
     except:
         pass
     try:
         s = re.sub("[;；]","，",s)#分号换逗号
+    except:
+        pass
+    try:
+        s = re.sub("——|--","，",s)#两个破折号换逗号
     except:
         pass
     try:
@@ -34,7 +39,7 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     for para in document.paragraphs:#读取word文档
         s = s + para.text + "\n"
     s = change_words(s)#更改标点
-    sens = s.split("。")#按句分割
+    sens = s.split("。")#按句或行分割
     new_sens = []
     for sen in sens:#此处不能用if not sen == " " or not sen == "": new_sens.append(sen)的结构
         if sen == ' ' or sen == '':
@@ -56,6 +61,9 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     for i in lucky_list:
         #print(("i and lucky_list are:{},{}").format(i,lucky_list))
         sen = new_sens[i]
+        if sen[0:3] == "===":#防止抽到标题
+            no_list.append(i)
+            continue
         luck_len = random.randint(FROM,TO)#挖空长度
         word_list = sen.split("，")#以以逗号隔开的小句为单位考察
         #print(("word_list is:{}").format(word_list))
@@ -86,10 +94,9 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     for no in no_list:
         lucky_list.remove(no)
     s = ''
-    for sen in new_sens[:-1]:#这最后一个不知为何是空字符串
+    for sen in new_sens[:-1]:#最后一个是空字符串
         s = s + sen + "。"
     #print(("luck_len_dict,lucky_word_list are:{},{}").format(luck_len_dict,lucky_word_list))
-    s = re.sub(r"[ ]*","",s)#空格消失术
     s = modify_s(s)#对s的内容略做修改
     return s,answer,lucky_list,luck_len_dict,lucky_word_list
 
@@ -134,7 +141,7 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     for para in document.paragraphs:
         s = s + para.text
     s = change_words(s)#更改标点
-    s_list = s.split("。")#同样按句分割答案
+    s_list = s.split("。")#同样分割答案
     for i in range(len(s_list)):#最后会多一个空格
         list_s = list(s_list[i])
         if len(list_s) >= 1:
@@ -186,10 +193,14 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
                                         count += 1
                                     else:
                                         error_dict[i][j].append(k)#往列表内追加元素
-                        else:#字数不同则全部放进去
-                            error_dict[i][j] = []
-                            for k in range(len(correct_zi)):
-                                error_dict[i][j].append(k)
+                        else:#字数则再判定是否是由于少了换行符或空格
+                            if re.sub(r"[\n  ]","",error_words[j]) == re.sub(r"[\n  ]","",correct_words[j]):
+                                #print("This part worked")
+                                continue
+                            else:
+                                error_dict[i][j] = []
+                                for k in range(len(correct_zi)):
+                                    error_dict[i][j].append(k)
             else:#不一样的话：
                 """A = 1
                 try:
