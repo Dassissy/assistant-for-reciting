@@ -307,8 +307,8 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
             print("你没有设置原文")
             return "again now"
         try:
-            for path in path_list:
-                print(path)
+            for p in range(len(path_list)):
+                print("{}.{}".format(p+1,path_list[p]))
             index = int(input("请选择文章（序号）：")) - 1#从一开始排序，所以减一
             if index > len(path_list)-1:#len()返回的值比索引大1（重要的东西写三遍）
                 path_list.error()#只是出个错而已

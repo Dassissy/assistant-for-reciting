@@ -3,7 +3,8 @@
 Created on Fri Apr 23 22:45:21 2021
 
 语文默写小助手
-特殊：标题：定义为由多于或等于三个的等号与下一个句号之间的内容（===xxx。），它们不会被抽作题目(但是有bug)
+特殊：标题：定义为由多于或等于三个的等号与下一个句号之间的内容（===xxx。），它们不会被抽作题目
+字号要改，尝试把标题换成=== *** ===，错句的末尾句号变逗号
 """
 from docx import Document
 from docx.shared import RGBColor
@@ -61,9 +62,12 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     for i in lucky_list:
         #print(("i and lucky_list are:{},{}").format(i,lucky_list))
         sen = new_sens[i]
-        if sen[0:3] == "===":#防止抽到标题
+        #print(("sen is:{}").format(sen))
+        if re.sub("\n","",sen)[0:3] == "===":#防止抽到标题(前面可能会有一个换行符)
+            #print("=== worked")
             no_list.append(i)
             continue
+        #print("it went on")
         luck_len = random.randint(FROM,TO)#挖空长度
         word_list = sen.split("，")#以以逗号隔开的小句为单位考察
         #print(("word_list is:{}").format(word_list))
@@ -344,8 +348,8 @@ def main(text_path="D://英语课文//原文//",file_path="D://英语课文//答
             print("你没有设置原文")
             return "again now"
         try:
-            for path in path_list:
-                print(path)
+            for p in range(len(path_list)):
+                print("{}.{}".format(p+1,path_list[p]))
             index = int(input("请选择文章（序号）：")) - 1#从一开始排序，所以减一
             if index > len(path_list)-1:#len()返回的值比索引大1（重要的东西写三遍）
                 path_list.error()#只是出个错而已
