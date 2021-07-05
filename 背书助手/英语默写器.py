@@ -3,23 +3,40 @@
 Created on Sun Apr 18 20:15:38 2021
 
 英语默写小助手
-问题还有：标点更换后大小写出问题、破折号的处理不能这么简单、没了标点没内味
+问题还有：标点更换后大小写出问题、破折号的处理不能这么简单、冒号不好弄啊、没了标点没内味、correct中===处空格没考虑
+评分系统有bug
 """
 from docx import Document
 from docx.shared import RGBColor
 import random,re,time,os
-  
+
 def change_words(s):#更改标点，但我不会拼
     try:
         s = re.sub("[!?]",".",s)#把叹号、问号换成句号
     except:
         pass
     try:
-        s = re.sub("[-\",“”]"," ",s)#破折号、引号、逗号换空格
+        s = re.sub("[\",“”]"," ",s)#引号、逗号换空格
     except:
         pass
     try:
-        s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格换成单个空格
+        s = re.sub("-{2,}"," ",s)#破折号换空格，连字符不能换成空格
+    except:
+        pass
+    try:
+        s = re.sub("'","'",s)#把'换成这种'
+    except:
+        pass
+    try:
+        s = re.sub(r":：","",s)#冒号换掉
+    except:
+        pass
+    try:
+        s = re.sub("\xa0"," ",s)#奇怪的空格换成空格
+    except:
+        pass
+    try:
+        s = re.sub(r"[ |\xa0]{2,}"," ",s)#多于一个的空格换成单个空格
     except:
         pass
     return s
@@ -28,13 +45,27 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     document = Document(text_path)
     s = ''
     for para in document.paragraphs:#读取word文档
-        s = s + para.text + "\n"
+        s = s + para.text#+ "\n"
     s = change_words(s)#更改标点
     sens = s.split(".")#按句分割
+            
+    for i in range(len(sens)):#与后面部分一致的处理方式
+        list_s = list(sens[i])
+        if len(list_s) >= 1:
+            while list_s[-1] == " ":
+                list_s.pop()
+        _s_ = ''
+        for w in list_s:
+            _s_ = _s_ + w
+        sens[i] = _s_
+        
     new_sens = []
     for sen in sens:
-        if not sen == ' ' or sen == '':
+        if sen != ' ' and sen != '':
+            sen = re.sub(r"^[ |\xa0]","",sen)
             new_sens.append(sen)
+        
+    
     #获取一些幸运句子
     #len返回的值是从1开始数的，随机数是含末尾的（len(new_sens)-1)
     lucky_list = [random.randint(0, len(new_sens)-1) for _ in range(len(new_sens)//num_of_Qs)]
@@ -49,12 +80,19 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
     for i in lucky_list:
         #print(("i and lucky_list are:{},{}").format(i,lucky_list))
         sen = new_sens[i]
+        #sen = re.sub("\n", "", sen)
+        #sen = re.sub("[ ]{2,}"," ",sen)
+        if re.sub("\n","",sen)[0:3] == "===":#防止抽到标题(前面可能会有一个换行符)
+            #print("=== worked")
+            no_list.append(i)
+            continue
+        #print("it went on")
         luck_len = random.randint(FROM,TO)#挖空长度
-        word_list = sen.split(" ")
+        word_list = re.split("[ |\xa0]",sen)
         LEN = len(word_list)
         while luck_len > 1 and luck_len > LEN:
             luck_len -= 1#确保挖的空不会超出句子
-        if LEN >= FROM:#若到最后LEN仍然在FROM以上
+        if LEN >= FROM:#若到最后仍存在luck_len
             lucky_word = random.randint(0, LEN-luck_len)#index要少一个，但len()会多一个，所以最后没有+1也没有-1
             lucky_word_list.append(lucky_word)
         else:
@@ -69,16 +107,16 @@ def get_s(text_path,FROM=2,TO=5,num_of_Qs=2):
         for word in word_list:
             sen = sen + word + " "
         new_sens[i] = sen#处理后的句子再转回去
-        """这部分可有可无，因为在底下有更简便的方式可以敲除无法挖空的句子
-    for no in no_list:
-        print(("no_list is:{}").format(no_list))
-        print(("lucky_list before removal is:{}").format(lucky_list))
-        lucky_list.remove(no)
-        print(("lucky_list after removal is:{}").format(lucky_list))"""
+    #这部分可有可无，因为在底下有更简便的方式可以敲除无法挖空的句子
+    #for no in no_list:
+        #print(("no_list is:{}").format(no_list))
+        #print(("lucky_list before removal is:{}").format(lucky_list))
+    #    lucky_list.remove(no)
+        #print(("lucky_list after removal is:{}").format(lucky_list))"""
     s = ''
     for sen in new_sens:
         s = s + sen + "."
-    s = re.sub(r"[ ]{2,}"," ",s)#多于一个的空格转为一个空格
+    s = re.sub("[ \xa0]{2,}"," ",s)#多于一个的空格转为一个空格
     return s,answer,lucky_list,luck_len_dict,lucky_word_list
 
 def dig_hole(text_path,file_path,FROM,TO,num_of_Qs):#挖空（洞）
@@ -101,6 +139,13 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
         s = s + para.text
     s = change_words(s)#更改标点
     s_list = s.split(".")#同样按句分割答案
+    
+    new_s = []
+    for sen in s_list:
+        if sen != ' ' and sen != '':
+            new_s.append(sen)
+    s_list = new_s.copy()
+    
     for i in range(len(s_list)):#最后会多一个空格
         list_s = list(s_list[i])
         if len(list_s) >= 1:
@@ -118,13 +163,10 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
     correct_list = []#正确的句子用绿色
     ilist = []
     for i in range(len(lucky_list)):
-        if lucky_list[i] not in luck_len_dict:#弹出放弃的句子（过短）
-            ilist.append(i)
+        if lucky_list[i] in luck_len_dict:#删去放弃的句子
+            ilist.append(lucky_list[i])
     #print(("ilist is:{}\nlucky_list is:{}\nluck_len_dict is:{}").format(ilist,lucky_list,luck_len_dict))
-    count = 0#使用count抵消掉弹出后列表长度的缩减，这里又可以用了
-    for i in ilist:
-        lucky_list.pop(i-count)
-        count += 1
+    lucky_list = ilist.copy()
     for i in range(len(lucky_list)):
         lucky_list[i] = (lucky_list[i],i)
     #print(("lucky_list with count is:{}").format(lucky_list))
@@ -147,11 +189,13 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
         else:#没对就费事了
             error_dict[i] = []#往字典里加空列表
             error_words = s_list[i].split(" ")
+            #print(("error_words is:{}").format(error_words))
             correct_words = answer[i].split(" ")
             if len(error_words) == len(correct_words):#长度相等
                 for j in range(len(error_words)):
+                    #print(("error_words[j] and correct_words[j] are:{},{}").format(error_words[j],correct_words[j]))
                     if not error_words[j] == correct_words[j]:#没对的话：)
-                        print(("error_words[j] and correct_words[i] are:{},{}").format(error_words[j],correct_words[j]))
+                        #print(("error_words[j] and correct_words[j] are:{},{}").format(error_words[j],correct_words[j]))
                         error_dict[i].append(j)#记下应标红的单词，及其所在的句子
             elif len(error_words) != len(correct_words):#不一样的话：
                 """A = 1
@@ -196,8 +240,6 @@ def correct(answer,lucky_list,luck_len_dict,lucky_word_list,s,file_path):
                     error_dict[i].append(f)
             '''
     document = Document()
-    document.save(file_path)
-    document = Document(file_path)#再开一遍，清空内容
     p = document.add_paragraph()
     while s_list[-1] == "":
         s_list.pop()
